@@ -11,12 +11,23 @@ class OzonFormSchema
             'locale' => $locale,
             'steps' => [
                 [
-                    'key' => 'images',
+                    'key' => 'description_images',
                     'label' => [
-                        'ru' => 'Изображения',
-                        'en' => 'Images'
+                        'ru' => 'Описание и изображения',
+                        'en' => 'Description and images'
                     ],
                     'fields' => [
+                        [
+                            'key' => 'description',
+                            'type' => 'string',
+                            'label' => [
+                                'ru' => 'Описание',
+                                'en' => 'Description'
+                            ],
+                            'required' => false,
+                            'constraints' => ['maxLen' => 5000],
+                            'textarea' => true
+                        ],
                         [
                             'key' => 'image_list',
                             'type' => 'image_list',

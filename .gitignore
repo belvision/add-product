@@ -1,0 +1,20 @@
+# Local env (secrets); template is in env/.env.example
+/.env
+env/.env
+
+# PHP
+vendor/
+
+# Node
+node_modules/
+
+# Runtime / uploads
+backend/storage/marketplace/
+backend/storage/**/tmp/
+
+base-path-both-entries.patch
+subfolder-support.patch
+mvp-1.0.diff
+mvp-1.0.diff.bak
+full-diff.txt
+mvp-canonical.diff

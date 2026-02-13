@@ -2,6 +2,7 @@
 
 class Response
 {
+    /** UUID v4 for request tracing only. Do not use for entity ids (draftId, imageId); use DraftRepository::generateUuid() for those. */
     public static function traceId()
     {
         // Generate pseudo-UUID v4
@@ -13,6 +14,9 @@ class Response
 
     public static function success($data, $metaExtra = [])
     {
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
         header('Content-Type: application/json; charset=utf-8');
         $response = [
             'ok' => true,
@@ -28,6 +32,9 @@ class Response
 
     public static function error($code, $message, $details = [], $httpStatus = 400)
     {
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
         http_response_code($httpStatus);
         header('Content-Type: application/json; charset=utf-8');
         $response = [

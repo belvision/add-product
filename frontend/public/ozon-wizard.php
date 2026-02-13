@@ -1,5 +1,4 @@
 <?php
-$lang = isset($_GET['lang']) && in_array($_GET['lang'], ['ru', 'en']) ? $_GET['lang'] : 'ru';
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars($lang); ?>">
@@ -7,7 +6,7 @@ $lang = isset($_GET['lang']) && in_array($_GET['lang'], ['ru', 'en']) ? $_GET['l
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $lang === 'ru' ? 'Мастер создания товара Ozon' : 'Ozon Product Creation Wizard'; ?></title>
-    <link rel="stylesheet" href="/public/assets/ozon-wizard.css">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($base); ?>/public/assets/ozon-wizard.css">
 </head>
 <body>
     <div class="wizard-header">
@@ -20,7 +19,9 @@ $lang = isset($_GET['lang']) && in_array($_GET['lang'], ['ru', 'en']) ? $_GET['l
     <div id="ozonWizard"></div>
     <script>
         window.__OZON_LANG__ = '<?php echo htmlspecialchars($lang); ?>';
+        window.__OZON_BASE__ = '<?php echo htmlspecialchars($base); ?>';
     </script>
-    <script src="/public/assets/ozon-wizard.js" defer></script>
+    <script src="<?php echo htmlspecialchars($base); ?>/public/js/api.js"></script>
+    <script src="<?php echo htmlspecialchars($base); ?>/public/assets/ozon-wizard.js" defer></script>
 </body>
 </html>
