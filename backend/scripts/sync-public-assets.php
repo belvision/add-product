@@ -11,18 +11,28 @@ $rootPublic = $projectRoot . '/public';
 
 $pairs = [
     // Ozon legacy paths (browser requests these URLs)
+    // eMall: source-of-truth is /assets/marketplaces/emall (sync copies into /assets/emall and /public/assets/emall)
     $frontendPublic . '/assets/ozon-wizard.js' => $rootPublic . '/assets/ozon-wizard.js',
     $frontendPublic . '/assets/ozon-wizard.css' => $rootPublic . '/assets/ozon-wizard.css',
     // eMall
-    $frontendPublic . '/assets/emall/emall-wizard.js' => $rootPublic . '/assets/emall/emall-wizard.js',
-    $frontendPublic . '/assets/emall/emall-wizard.css' => $rootPublic . '/assets/emall/emall-wizard.css',
-    $frontendPublic . '/assets/emall/steps/step1.js' => $rootPublic . '/assets/emall/steps/step1.js',
-    $frontendPublic . '/assets/emall/steps/step7.js' => $rootPublic . '/assets/emall/steps/step7.js',
-    $frontendPublic . '/assets/emall/steps/step6.js' => $rootPublic . '/assets/emall/steps/step6.js',
-    $frontendPublic . '/assets/emall/steps/step5.js' => $rootPublic . '/assets/emall/steps/step5.js',
-    $frontendPublic . '/assets/emall/steps/step4.js' => $rootPublic . '/assets/emall/steps/step4.js',
-    $frontendPublic . '/assets/emall/steps/step3.js' => $rootPublic . '/assets/emall/steps/step3.js',
-    $frontendPublic . '/assets/emall/steps/step2.js' => $rootPublic . '/assets/emall/steps/step2.js',
+    $frontendPublic . '/assets/marketplaces/emall/emall-wizard.js' => $rootPublic . '/assets/emall/emall-wizard.js',
+    $frontendPublic . '/assets/marketplaces/emall/emall-wizard.js' => $frontendPublic . '/assets/emall/emall-wizard.js',
+    $frontendPublic . '/assets/marketplaces/emall/emall-wizard.css' => $rootPublic . '/assets/emall/emall-wizard.css',
+    $frontendPublic . '/assets/marketplaces/emall/emall-wizard.css' => $frontendPublic . '/assets/emall/emall-wizard.css',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step1.js' => $rootPublic . '/assets/emall/steps/step1.js',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step1.js' => $frontendPublic . '/assets/emall/steps/step1.js',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step7.js' => $rootPublic . '/assets/emall/steps/step7.js',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step7.js' => $frontendPublic . '/assets/emall/steps/step7.js',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step6.js' => $rootPublic . '/assets/emall/steps/step6.js',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step6.js' => $frontendPublic . '/assets/emall/steps/step6.js',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step5.js' => $rootPublic . '/assets/emall/steps/step5.js',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step5.js' => $frontendPublic . '/assets/emall/steps/step5.js',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step4.js' => $rootPublic . '/assets/emall/steps/step4.js',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step4.js' => $frontendPublic . '/assets/emall/steps/step4.js',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step3.js' => $rootPublic . '/assets/emall/steps/step3.js',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step3.js' => $frontendPublic . '/assets/emall/steps/step3.js',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step2.js' => $rootPublic . '/assets/emall/steps/step2.js',
+    $frontendPublic . '/assets/marketplaces/emall/steps/step2.js' => $frontendPublic . '/assets/emall/steps/step2.js',
     // Shared JS
     $frontendPublic . '/js/api.js' => $rootPublic . '/js/api.js',
 ];
