@@ -4,6 +4,19 @@
 
     const locale = (typeof window.__OZON_LANG__ === 'string' && window.__OZON_LANG__) ? window.__OZON_LANG__ : (window.__LANG__ || 'ru');
     const MARKETPLACE = 'emall';
+// === Module registry (for splitting wizard into small files) ===
+window.EmallWizard = window.EmallWizard || {};
+(function(ns){
+  ns._stepRenderers = ns._stepRenderers || {};
+  ns.registerStepRenderer = ns.registerStepRenderer || function(stepKey, fn){
+    if (!stepKey || typeof fn !== 'function') return;
+    ns._stepRenderers[String(stepKey)] = fn;
+  };
+  ns.getStepRenderer = ns.getStepRenderer || function(stepKey){
+    return ns._stepRenderers ? ns._stepRenderers[String(stepKey)] : null;
+  };
+})(window.EmallWizard);
+
 
     const i18n = {
         ru: {
