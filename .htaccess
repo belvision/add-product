@@ -1,14 +1,22 @@
 Options -Indexes
 RewriteEngine On
 
-# Если файл/папка существует — отдаём как есть
+# 1) If file/dir exists - serve as is
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# API: /api/* -> /api/index.php
+# 2) Legacy URL compatibility (no nginx changes):
+# /public/assets/* and /public/js/* should work even if real files are in frontend/public/...
+RewriteCond %{DOCUMENT_ROOT}/frontend/public/assets/$1 -f
+RewriteRule ^public/assets/(.*)$ frontend/public/assets/$1 [L]
+
+RewriteCond %{DOCUMENT_ROOT}/frontend/public/js/$1 -f
+RewriteRule ^public/js/(.*)$ frontend/public/js/$1 [L]
+
+# 3) API: /api/* -> /api/index.php
 RewriteRule ^api(?:/(.*))?$ api/index.php [L,QSA]
 
-# Всё остальное -> /frontend/index.php
+# 4) Everything else -> frontend front-controller
 RewriteRule ^ frontend/index.php [L,QSA]
 
