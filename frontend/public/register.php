@@ -11,22 +11,29 @@ $loginLink = $lang === 'ru' ? 'Вход' : 'Log in';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($base); ?>/public/assets/ozon-wizard.css">
 </head>
 <body>
-    <h1><?php echo htmlspecialchars($pageTitle); ?></h1>
-    <form method="post" action="<?php echo htmlspecialchars($base); ?>/auth/register" id="registerForm">
-        <div>
-            <label><?php echo htmlspecialchars($emailLabel); ?></label>
-            <input type="email" name="email" required>
+    <div class="app-page">
+        <div class="app-card">
+            <h1 class="app-card-title"><?php echo htmlspecialchars($pageTitle); ?></h1>
+            <form method="post" action="<?php echo htmlspecialchars($base); ?>/auth/register" id="registerForm">
+                <div class="app-form-row">
+                    <label><?php echo htmlspecialchars($emailLabel); ?></label>
+                    <input type="email" name="email" required>
+                </div>
+                <div class="app-form-row">
+                    <label><?php echo htmlspecialchars($passwordLabel); ?></label>
+                    <input type="password" name="password" required minlength="8">
+                </div>
+                <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars($submitLabel); ?></button>
+            </form>
+            <p class="app-text-muted" style="margin-top: 12px;">
+                <a href="<?php echo htmlspecialchars($base); ?>/login"><?php echo htmlspecialchars($loginLink); ?></a>
+            </p>
+            <p id="msg" class="app-text-muted"></p>
         </div>
-        <div>
-            <label><?php echo htmlspecialchars($passwordLabel); ?></label>
-            <input type="password" name="password" required minlength="8">
-        </div>
-        <button type="submit"><?php echo htmlspecialchars($submitLabel); ?></button>
-    </form>
-    <p><a href="<?php echo htmlspecialchars($base); ?>/login"><?php echo htmlspecialchars($loginLink); ?></a></p>
-    <p id="msg"></p>
+    </div>
     <script>
         window.__OZON_BASE__ = '<?php echo htmlspecialchars($base); ?>';
     </script>

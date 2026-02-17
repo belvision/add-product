@@ -1,3 +1,4 @@
+/* SOURCE: frontend/public/assets/marketplaces/ozon/ozon-wizard.css — EDIT THERE. Legacy copy for URL compatibility. */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -11,16 +12,57 @@ body {
 }
 
 .wizard-header {
-    max-width: 800px;
+    max-width: 1200px;
     margin: 0 auto 30px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .wizard-header h1 {
     font-size: 24px;
     color: #333;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.marketplace-tabs {
+    display: flex;
+    gap: 0;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.marketplace-tab {
+    padding: 8px 14px;
+    text-decoration: none;
+    color: #555;
+    background: #fff;
+    font-size: 14px;
+    border-right: 1px solid #ddd;
+}
+
+.marketplace-tab:last-child {
+    border-right: none;
+}
+
+.marketplace-tab:hover {
+    background: #f5f5f5;
+    color: #333;
+}
+
+.marketplace-tab.active {
+    background: #0066cc;
+    color: white;
+    border-color: #0066cc;
 }
 
 .lang-switcher {
@@ -40,6 +82,16 @@ body {
     background: #0066cc;
     color: white;
     border-color: #0066cc;
+}
+
+.wizard-header .header-link {
+    padding: 5px 10px;
+    text-decoration: none;
+    color: #666;
+    font-size: 14px;
+}
+.wizard-header .header-link:hover {
+    color: #0066cc;
 }
 
 #ozonWizard {
@@ -89,6 +141,72 @@ body {
     word-break: break-all;
     max-height: 200px;
     overflow-y: auto;
+}
+
+.pipeline-log-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 12px 0 8px;
+    color: #333;
+}
+
+.pipeline-spinner-wrap {
+    margin: 8px 0;
+}
+
+.pipeline-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ddd;
+    border-top-color: #0066cc;
+    border-radius: 50%;
+    animation: pipeline-spin 0.7s linear infinite;
+}
+
+@keyframes pipeline-spin {
+    to { transform: rotate(360deg); }
+}
+
+.pipeline-log {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0;
+    font-size: 13px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.pipeline-log-entry {
+    padding: 6px 10px;
+    margin: 2px 0;
+    border-radius: 4px;
+    border-left: 3px solid transparent;
+}
+
+.pipeline-log-entry.info {
+    background: #f0f7ff;
+    border-left-color: #0066cc;
+}
+
+.pipeline-log-entry.success {
+    background: #f0fff4;
+    border-left-color: #28a745;
+}
+
+.pipeline-log-entry.error {
+    background: #fff5f5;
+    border-left-color: #dc3545;
+}
+
+.pipeline-log-meta {
+    color: #666;
+    font-size: 12px;
+}
+
+.status-error {
+    color: #dc3545;
+    font-weight: 500;
 }
 
 .field-textarea {
@@ -341,4 +459,152 @@ body {
     padding: 15px;
     margin-top: 20px;
     border-radius: 4px;
+}
+
+/* Generic app layout (auth, cabinet, etc.) */
+.app-page {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.app-card {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 24px 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+    margin-bottom: 20px;
+}
+
+.app-card-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.app-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 12px;
+}
+
+.app-text-muted {
+    font-size: 13px;
+    color: #666;
+}
+
+.app-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.app-form-row {
+    margin-bottom: 16px;
+}
+
+.app-form-row label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #333;
+}
+
+.app-form-row input[type="email"],
+.app-form-row input[type="password"],
+.app-form-row input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.app-form-row input[type="email"]:focus,
+.app-form-row input[type="password"]:focus,
+.app-form-row input[type="text"]:focus {
+    outline: none;
+    border-color: #0066cc;
+    box-shadow: 0 0 0 1px rgba(0, 102, 204, 0.1);
+}
+
+.app-service-grid {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.app-service-card {
+    flex: 1 1 200px;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 14px 12px;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.app-service-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.app-service-status {
+    font-size: 12px;
+    color: #888;
+}
+
+.app-service-card .btn {
+    width: 100%;
+    text-align: center;
+}
+
+.app-link-muted {
+    font-size: 13px;
+    color: #666;
+    text-decoration: none;
+}
+
+.app-link-muted:hover {
+    color: #333;
+    text-decoration: underline;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.draft-restore-modal {
+    padding: 24px;
+    text-align: center;
+}
+
+.draft-restore-modal p {
+    margin-bottom: 20px;
+    font-size: 1.05rem;
+    color: #333;
+}
+
+.draft-restore-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 12px;
+    }
+
+    .app-card {
+        padding: 18px 14px;
+    }
 }

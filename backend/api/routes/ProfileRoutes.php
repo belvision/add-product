@@ -4,6 +4,7 @@ require_once __DIR__ . '/RouteHelpers.php';
 require_once __DIR__ . '/../../src/Auth.php';
 require_once __DIR__ . '/../../src/Response.php';
 require_once __DIR__ . '/../../src/OzonCredentialsRepository.php';
+require_once __DIR__ . '/../../src/EmallCredentialsRepository.php';
 
 class ProfileRoutes
 {
@@ -51,6 +52,36 @@ class ProfileRoutes
                 fail('VALIDATION_ERROR', 'clientId and apiKey are required and must be non-empty', [], 400);
             }
             OzonCredentialsRepository::saveForUser($uid, $clientId, $apiKey);
+            Response::success(['saved' => true]);
+            return true;
+        }
+
+        if ($method === 'GET' && $path === '/me/emall-credentials') {
+            $uid = requireAuth();
+            $creds = EmallCredentialsRepository::getForUser($uid);
+            if (!$creds) {
+                Response::success(['apiKeyMasked' => null]);
+                return true;
+            }
+            $key = $creds['api_key'];
+            $len = strlen($key);
+            $visible = 3;
+            $masked = $len <= $visible * 2 ? str_repeat('*', min(4, $len)) : substr($key, 0, $visible) . '…' . substr($key, -$visible);
+            Response::success(['apiKeyMasked' => $masked]);
+            return true;
+        }
+
+        if ($method === 'PUT' && $path === '/me/emall-credentials') {
+            $uid = requireAuth();
+            $body = jsonBody();
+            if (!is_array($body)) {
+                fail('VALIDATION_ERROR', 'JSON body required', [], 400);
+            }
+            $apiKey = isset($body['apiKey']) ? trim((string) $body['apiKey']) : '';
+            if ($apiKey === '') {
+                fail('VALIDATION_ERROR', 'apiKey is required and must be non-empty', [], 400);
+            }
+            EmallCredentialsRepository::saveForUser($uid, $apiKey);
             Response::success(['saved' => true]);
             return true;
         }

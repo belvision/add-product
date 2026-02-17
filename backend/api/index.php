@@ -20,7 +20,9 @@ require_once __DIR__ . '/routes/AuthRoutes.php';
 require_once __DIR__ . '/routes/ProfileRoutes.php';
 require_once __DIR__ . '/routes/DraftRoutes.php';
 require_once __DIR__ . '/routes/ImageRoutes.php';
+require_once __DIR__ . '/routes/ProgressRoutes.php';
 require_once __DIR__ . '/routes/PipelineRoutes.php';
+require_once __DIR__ . '/routes/EmallDraftRoutes.php';
 
 set_error_handler(function ($severity, $message, $file, $line) {
     if (ob_get_level()) {
@@ -45,7 +47,29 @@ $queryPos = strpos($requestUri, '?');
 if ($queryPos !== false) {
     $requestUri = substr($requestUri, 0, $queryPos);
 }
+// Some shared-hosting / nginx setups reject PATH_INFO (e.g. /api/index.php/drafts/..)
+// with 406 Not Acceptable. To avoid relying on PATH_INFO, frontend can call:
+//   /api/index.php?r=/drafts/<id>
+// and we will route based on the `r` query parameter.
 $path = $requestUri;
+if (isset($_GET['r']) && is_string($_GET['r']) && $_GET['r'] !== '') {
+    $path = $_GET['r'];
+    if ($path[0] !== '/') {
+        $path = '/' . $path;
+    }
+}
+
+// Normalize possible /frontend/api* prefixes produced by clean external URLs.
+// Examples we want to support (all should become the same logical path):
+//   /frontend/api/drafts
+//   /frontend/api/index.php?r=/drafts
+if (strncmp($path, '/frontend/api/index.php', 22) === 0) {
+    $path = substr($path, 22);
+} elseif (strncmp($path, '/frontend/api', 12) === 0) {
+    $path = substr($path, 12);
+}
+
+// Historical prefixes: /api/index.php, /api.
 if (strncmp($path, '/api/index.php', 14) === 0) {
     $path = substr($path, 14);
 } elseif (strncmp($path, '/api', 4) === 0) {
@@ -76,7 +100,13 @@ if (DraftRoutes::handle($method, $path, $locale)) {
 if (ImageRoutes::handle($method, $path, $locale)) {
     return;
 }
+if (ProgressRoutes::handle($method, $path, $locale)) {
+    return;
+}
 if (PipelineRoutes::handle($method, $path, $locale)) {
+    return;
+}
+if (EmallDraftRoutes::handle($method, $path, $locale)) {
     return;
 }
 

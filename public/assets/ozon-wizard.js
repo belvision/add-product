@@ -24,7 +24,20 @@
             progress: 'Прогресс',
             logs: 'Логи',
             startPipeline: 'Запустить пайплайн',
-            emailNotVerified: 'Подтвердите email для публикации'
+            emailNotVerified: 'Подтвердите email для публикации',
+            pipelineStep1: '1/5 DeepSeek строит дерево категорий...',
+            pipelineStep2: '2/5 Получаем embedding по дереву категорий...',
+            pipelineStep3: '3/5 Ищем 10 ближайших категорий в Qdrant...',
+            pipelineStep4: '4/5 Находим названия категорий в базе...',
+            pipelineStep5: '5/5 DeepSeek выбирает наиболее подходящую категорию...',
+            pipelineIntro: 'Введите описание товара и нажмите «Запустить пайплайн». Здесь по шагам покажем, что происходит.',
+            pipelineTop10Title: 'Кандидаты категорий (top10):',
+            pipelineSelectedTitle: 'Выбрана категория:',
+            goToStep2: 'Перейти к шагу 2',
+            categoryWeDetected: 'Мы определили категорию',
+            categoryManualHint: 'Проверьте, что эта категория подходит вашему товару.',
+            continue: 'Продолжить',
+            pipelineError: 'Не удалось запустить пайплайн категории'
         },
         en: {
             saving: 'Saving...',
@@ -46,7 +59,20 @@
             progress: 'Progress',
             logs: 'Logs',
             startPipeline: 'Start pipeline',
-            emailNotVerified: 'Verify email to publish'
+            emailNotVerified: 'Verify email to publish',
+            pipelineStep1: '1/5 DeepSeek builds a category tree...',
+            pipelineStep2: '2/5 Getting embedding for the category tree...',
+            pipelineStep3: '3/5 Searching 10 nearest categories in Qdrant...',
+            pipelineStep4: '4/5 Resolving category names from PostgreSQL...',
+            pipelineStep5: '5/5 DeepSeek chooses the best category...',
+            pipelineIntro: 'Enter product description and click “Start pipeline” to see detailed steps here.',
+            pipelineTop10Title: 'Category candidates (top10):',
+            pipelineSelectedTitle: 'Selected category:',
+            goToStep2: 'Go to step 2',
+            categoryWeDetected: 'We detected a category',
+            categoryManualHint: 'You can choose a different category from the list if needed.',
+            continue: 'Continue',
+            pipelineError: 'Failed to run category pipeline'
         }
     };
 
@@ -64,24 +90,27 @@
     }
 
     /**
-     * Build URL to API entrypoint using encoded `r` parameter.
-     * Keeps all routing through a single helper to avoid raw slashes in query.
+     * Build URL to API entrypoint using clean prefix-based path:
+     *   <base>/api/<route>
+     *
+     * Example (base="/frontend", route="/drafts"): "/frontend/api/drafts".
+     * nginx is responsible for rewriting /frontend/api/* to the actual
+     * PHP entrypoint; we only keep the client-side URLs "clean".
      */
     function buildApiUrlR(route, extraQuery) {
         const apiBase = getApiBase();
         let r = route || '';
         if (r && r[0] !== '/') r = '/' + r;
-        let url = apiBase + '/api/index.php?r=' + encodeURIComponent(r) + '&lang=' + encodeURIComponent(locale);
+        let url = apiBase + '/api' + r;
         if (extraQuery) {
-            url += (extraQuery[0] === '&' ? extraQuery : '&' + extraQuery);
+            url += (url.indexOf('?') === -1 ? '?' : '&') + extraQuery;
         }
         return url;
     }
 
     function apiFetch(path, options) {
         options = options || {};
-        // Avoid PATH_INFO (e.g. /api/index.php/drafts/..) which can return 406 on some nginx/shared hosting.
-        // Route via query param: /api/index.php?r=/drafts/..&lang=..
+        // Route everything through helper that builds clean /api/<route> URLs.
         const qPos = path.indexOf('?');
         const route = (qPos === -1 ? path : path.slice(0, qPos));
         const extraQuery = (qPos === -1 ? '' : path.slice(qPos + 1)); // without '?'
@@ -118,40 +147,176 @@
         savingState: null,
         fieldErrors: {},
         autosaveTimer: null,
-        pipelineStatus: null,
-        pipelinePollTimer: null
+        // Local UX-only pipeline state for category detection on step 1.
+        categoryPipeline: null, // { status: 'idle'|'running'|'done'|'error', error?: string }
+        categoryTop10: [],
+        categorySelected: null,
+        categoryDeepseek: null,
+        categoryTree: '',
+        categoryDeepseekTree: null
     };
 
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function buildDeepseekDiagnostic(deepseek) {
+        if (!deepseek || !deepseek.status) {
+            return '';
+        }
+        var status = deepseek.status;
+        var http = typeof deepseek.http_status === 'number' && deepseek.http_status > 0
+            ? 'HTTP ' + deepseek.http_status
+            : null;
+
+        if (locale === 'ru') {
+            if (status === 'called') {
+                return 'DeepSeek: вызван' + (http ? ' (' + http + ')' : '');
+            }
+            if (status === 'skipped') {
+                return 'DeepSeek: skipped (not configured)';
+            }
+            if (status === 'failed' || status === 'fallback') {
+                return 'DeepSeek: failed' + (http ? ' (' + http + ', fallback used)' : ' (fallback used)');
+            }
+            return 'DeepSeek: ' + status;
+        } else {
+            if (status === 'called') {
+                return 'DeepSeek: called' + (http ? ' (' + http + ')' : '');
+            }
+            if (status === 'skipped') {
+                return 'DeepSeek: skipped (not configured)';
+            }
+            if (status === 'failed' || status === 'fallback') {
+                return 'DeepSeek: failed' + (http ? ' (' + http + ', fallback used)' : ' (fallback used)');
+            }
+            return 'DeepSeek: ' + status;
+        }
+    }
+
     function renderPipelineContent() {
-        const ps = wizard.pipelineStatus;
-        if (!ps) return '<p>' + (locale === 'ru' ? 'Нет данных' : 'No data') + '</p>';
-        let h = '<p><strong>' + t('stage') + ':</strong> ' + (ps.stage || 'idle') + '</p>';
-        h += '<p><strong>' + t('progress') + ':</strong> ' + (ps.progressPct || 0) + '%</p>';
-        if (ps.logs && ps.logs.length) {
-            const logs = ps.logs.length > 200 ? ps.logs.slice(-200) : ps.logs;
-            h += '<div class="pipeline-logs"><strong>' + t('logs') + ':</strong><pre>' + logs.map(function(l) { return (l.ts || '') + ' ' + (l.message || ''); }).join('\n') + '</pre></div>';
+        const cp = wizard.categoryPipeline;
+        if (!cp || cp.status === 'idle') {
+            return '<p>' + t('pipelineIntro') + '</p>' +
+                '<ul class="pipeline-steps">' +
+                '<li>' + t('pipelineStep1') + '</li>' +
+                '<li>' + t('pipelineStep2') + '</li>' +
+                '<li>' + t('pipelineStep3') + '</li>' +
+                '<li>' + t('pipelineStep4') + '</li>' +
+                '<li>' + t('pipelineStep5') + '</li>' +
+                '</ul>';
         }
-        if ((ps.stage === 'payload_ready' || ps.stage === 'ready') && ps.finalPayloadJson) {
-            h += '<details class="final-payload"><summary>finalPayloadJson</summary><pre>' + JSON.stringify(ps.finalPayloadJson, null, 2) + '</pre></details>';
+
+        if (cp.status === 'error') {
+            return '<p class="status-error">' + (cp.error || t('pipelineError')) + '</p>';
         }
+
+        let h = '<ul class="pipeline-steps">';
+        h += '<li>' + t('pipelineStep1') + '</li>';
+        h += '<li>' + t('pipelineStep2') + '</li>';
+        h += '<li>' + t('pipelineStep3') + '</li>';
+        h += '<li>' + t('pipelineStep4') + '</li>';
+        h += '<li>' + t('pipelineStep5') + '</li>';
+        h += '</ul>';
+
+        // Показываем строку дерева категорий, использованную для embedding.
+        if (wizard.categoryTree) {
+            const title = (locale === 'ru'
+                ? 'Дерево категорий для embedding (DeepSeek): '
+                : 'Category tree for embedding (DeepSeek): ');
+            h += '<p class="category-tree-line"><strong>' + title + '</strong>' +
+                escapeHtml(wizard.categoryTree) + '</p>';
+        }
+
+        // Explicit DeepSeek status line after steps.
+        if (wizard.categoryDeepseek) {
+            const diag = buildDeepseekDiagnostic(wizard.categoryDeepseek);
+            if (diag) {
+                h += '<p class="deepseek-status"><strong>' + (locale === 'ru' ? 'Статус DeepSeek: ' : 'DeepSeek status: ') + '</strong>' + escapeHtml(diag) + '</p>';
+                if (wizard.categoryDeepseek.error) {
+                    h += '<p class="deepseek-error">' + escapeHtml(String(wizard.categoryDeepseek.error)) + '</p>';
+                }
+            }
+        }
+
+        const top10 = wizard.categoryTop10 || [];
+        if (top10.length) {
+            h += '<div class="pipeline-top10"><strong>' + t('pipelineTop10Title') + '</strong><ol>';
+            top10.forEach(function (item, idx) {
+                const title = (item.title_cat || '') + ' \u2192 ' + (item.type_name || '');
+                const score = (typeof item.score === 'number') ? item.score.toFixed(3) : item.score;
+                h += '<li>' + (idx + 1) + ') ' + title + ' (score: ' + score + ')</li>';
+            });
+            h += '</ol></div>';
+        }
+
+        if (wizard.categorySelected) {
+            const sel = wizard.categorySelected;
+            const label = (sel.title_cat || '') + ' \u2192 ' + (sel.type_name || '');
+            h += '<p class="pipeline-selected"><strong>' + t('pipelineSelectedTitle') + '</strong> ' + label + '</p>';
+        }
+
         return h;
     }
 
-    function pollPipeline() {
+    function startCategoryPipeline() {
         if (!wizard.draftId) return;
-        apiFetch('/drafts/' + wizard.draftId + '/pipeline:status').then(function(data) {
-            wizard.pipelineStatus = data;
-            const el = document.getElementById('pipelineStatusContent');
-            if (el) el.innerHTML = renderPipelineContent();
-        }).catch(function() {});
-    }
+        const desc = (wizard.editedJson && typeof wizard.editedJson.description === 'string')
+            ? wizard.editedJson.description
+            : '';
+        if (!desc) {
+            showStatus('error', locale === 'ru'
+                ? 'Сначала введите описание товара на шаге 1'
+                : 'Please enter product description on step 1 first');
+            return;
+        }
 
-    function startPipeline() {
-        if (!wizard.draftId || !emailVerified) return;
-        apiFetch('/drafts/' + wizard.draftId + '/pipeline:start', { method: 'POST' }).then(function() {
-            pollPipeline();
-        }).catch(function(err) {
-            showStatus('error', err.message || t('error'));
+        wizard.categoryPipeline = { status: 'running' };
+        wizard.categoryTop10 = [];
+        wizard.categorySelected = null;
+        wizard.categoryDeepseek = null;
+        wizard.categoryTree = '';
+        wizard.categoryDeepseekTree = null;
+        render();
+
+        apiFetch('/pipeline/category:detect', {
+            method: 'POST',
+            body: {
+                draftId: wizard.draftId,
+                description: desc,
+                lang: locale
+            }
+        }).then(function (data) {
+            wizard.categoryTop10 = data.top10 || [];
+            wizard.categorySelected = data.selected || null;
+            wizard.categoryDeepseek = data.deepseek || null;
+            wizard.categoryTree = data.category_tree || '';
+            wizard.categoryDeepseekTree = data.deepseek_tree || null;
+
+            // Keep selected category and candidates in editedJson so backend and UI stay in sync.
+            if (!wizard.editedJson || typeof wizard.editedJson !== 'object') {
+                wizard.editedJson = {};
+            }
+            wizard.editedJson.qdrant_top10 = wizard.categoryTop10;
+            wizard.editedJson.selected_category = wizard.categorySelected;
+            wizard.editedJson.deepseek = wizard.categoryDeepseek;
+            wizard.editedJson.category_tree = wizard.categoryTree;
+            wizard.editedJson.deepseek_tree = wizard.categoryDeepseekTree;
+
+            wizard.categoryPipeline = { status: 'done' };
+            saveDraft(true);
+            render();
+        }).catch(function (err) {
+            wizard.categoryPipeline = {
+                status: 'error',
+                error: err && err.message ? err.message : t('pipelineError')
+            };
+            render();
         });
     }
 
@@ -318,30 +483,64 @@
         html += '<div class="wizard-form">';
         if (step) {
             html += '<div class="step-content">';
-            step.fields.forEach(function(field) {
-                html += renderField(field);
-            });
+            if (step.key === 'category') {
+                html += renderCategoryStep();
+            } else {
+                step.fields.forEach(function(field) {
+                    html += renderField(field);
+                });
+            }
             html += '</div>';
         }
 
         html += '<div class="buttons-row">';
-        if (wizard.currentStepIndex > 0) {
-            html += '<button class="btn btn-secondary" id="prevBtn">' + t('prev') + '</button>';
-        } else {
-            html += '<div></div>';
-        }
-        html += '<div>';
-        html += '<button class="btn btn-secondary" id="saveBtn">' + t('save') + '</button>';
-        if (wizard.currentStepIndex < wizard.formSchema.steps.length - 1) {
-            html += '<button class="btn btn-primary" id="nextBtn">' + t('next') + '</button>';
-        } else {
-            html += '<button class="btn btn-primary" id="publishBtn"' + (emailVerified ? '' : ' disabled title="' + t('emailNotVerified') + '"') + '>' + t('publish') + '</button>';
-        }
-        html += '</div>';
-        html += '</div>';
+        // Step 0: single smart button instead of Save/Next/Start pipeline.
         if (wizard.currentStepIndex === 0) {
-            html += '<button type="button" class="btn btn-secondary" id="startPipelineBtn">' + t('startPipeline') + '</button>';
+            html += '<div></div>';
+            html += '<div>';
+            var cp = wizard.categoryPipeline;
+            var label;
+            var disabledAttr = '';
+            if (!cp || cp.status === 'idle') {
+                label = t('startPipeline');
+            } else if (cp.status === 'running') {
+                label = (locale === 'ru'
+                    ? 'Пайплайн запускается...'
+                    : 'Pipeline is running...');
+                disabledAttr = ' disabled';
+            } else if (cp.status === 'done') {
+                label = t('goToStep2');
+            } else if (cp.status === 'error') {
+                label = (locale === 'ru'
+                    ? 'Повторить пайплайн'
+                    : 'Retry pipeline');
+            } else {
+                label = t('startPipeline');
+            }
+            html += '<button type="button" class="btn btn-primary" id="primaryStep1Btn"' + disabledAttr + '>' + label + '</button>';
+            html += '</div>';
+        } else if (step && step.key === 'category') {
+            // On category step, show ONLY one primary button to continue.
+            html += '<div></div>';
+            html += '<div>';
+            html += '<button class="btn btn-primary" id="continueCategoryBtn">' + t('continue') + '</button>';
+            html += '</div>';
+        } else {
+            if (wizard.currentStepIndex > 0) {
+                html += '<button class="btn btn-secondary" id="prevBtn">' + t('prev') + '</button>';
+            } else {
+                html += '<div></div>';
+            }
+            html += '<div>';
+            html += '<button class="btn btn-secondary" id="saveBtn">' + t('save') + '</button>';
+            if (wizard.currentStepIndex < wizard.formSchema.steps.length - 1) {
+                html += '<button class="btn btn-primary" id="nextBtn">' + t('next') + '</button>';
+            } else {
+                html += '<button class="btn btn-primary" id="publishBtn"' + (emailVerified ? '' : ' disabled title="' + t('emailNotVerified') + '"') + '>' + t('publish') + '</button>';
+            }
+            html += '</div>';
         }
+        html += '</div>';
         if (wizard.savingState) {
             html += '<div class="status-area status-' + wizard.savingState.type + '">' + wizard.savingState.message + '</div>';
         }
@@ -359,10 +558,6 @@
             renderImagesGrid();
             setupImageHandlers();
         }
-        if (wizard.draftId && !wizard.pipelinePollTimer) {
-            wizard.pipelinePollTimer = setInterval(pollPipeline, 1500);
-            pollPipeline();
-        }
     }
 
     function attachEventHandlers() {
@@ -377,11 +572,19 @@
             });
         });
 
-        const startPipelineBtn = document.getElementById('startPipelineBtn');
-        if (startPipelineBtn) {
-            startPipelineBtn.onclick = function() {
+        const primaryStep1Btn = document.getElementById('primaryStep1Btn');
+        if (primaryStep1Btn) {
+            primaryStep1Btn.onclick = function () {
+                const cp = wizard.categoryPipeline;
+                // After successful pipeline, move user to category step.
+                if (cp && cp.status === 'done' && wizard.formSchema && wizard.formSchema.steps.length > 1) {
+                    wizard.currentStepIndex = 1;
+                    render();
+                    return;
+                }
+                // Otherwise (idle or error) — (re)run pipeline.
                 saveDraft(true);
-                setTimeout(startPipeline, 300);
+                setTimeout(startCategoryPipeline, 300);
             };
         }
 
@@ -416,6 +619,70 @@
         if (publishBtn) {
             publishBtn.onclick = publishDraft;
         }
+
+        const continueCategoryBtn = document.getElementById('continueCategoryBtn');
+        if (continueCategoryBtn) {
+            continueCategoryBtn.onclick = function () {
+                showStatus('saved', locale === 'ru'
+                    ? 'Следующие шаги появятся позже'
+                    : 'Next steps will be available later');
+            };
+        }
+    }
+
+    function renderCategoryStep() {
+        const top10 = wizard.categoryTop10 || [];
+        const selected = wizard.categorySelected || (top10.length ? top10[0] : null);
+
+        if (selected && !wizard.categorySelected) {
+            wizard.categorySelected = selected;
+        }
+
+        let html = '';
+        html += '<div class="category-step">';
+
+        // Dynamic headline based on DeepSeek status.
+        const ds = wizard.categoryDeepseek;
+        let headline;
+        if (ds && ds.status === 'called') {
+            headline = (locale === 'ru'
+                ? 'DeepSeek выбрал категорию'
+                : 'DeepSeek chose a category');
+        } else if (ds && ds.status === 'skipped') {
+            // DeepSeek not configured — fallback to nearest category.
+            headline = (locale === 'ru'
+                ? 'DeepSeek не настроен — выбрана ближайшая категория автоматически'
+                : 'DeepSeek is not configured — selected nearest category automatically');
+        } else if (ds && (ds.status === 'failed' || ds.status === 'fallback')) {
+            // DeepSeek failed/unavailable — fallback to nearest category.
+            headline = (locale === 'ru'
+                ? 'DeepSeek недоступен — выбрана ближайшая категория автоматически'
+                : 'DeepSeek is unavailable — selected nearest category automatically');
+        } else {
+            headline = t('categoryWeDetected');
+        }
+
+        html += '<h3>' + headline + '</h3>';
+
+        const diag = buildDeepseekDiagnostic(ds);
+        if (diag) {
+            html += '<p class="deepseek-diagnostic">' + escapeHtml(diag) + '</p>';
+        }
+
+        if (!top10.length || !selected) {
+            html += '<p>' + (locale === 'ru'
+                ? 'Сначала заполните описание на шаге 1 и запустите пайплайн категории.'
+                : 'First fill description on step 1 and run the category pipeline.') + '</p>';
+            html += '</div>';
+            return html;
+        }
+
+        const label = (selected.title_cat || '') + ' \u2192 ' + (selected.type_name || '');
+        html += '<p class="category-selected-main">' + label + '</p>';
+        html += '<p class="category-hint">' + t('categoryManualHint') + '</p>';
+
+        html += '</div>';
+        return html;
     }
 
     function setupImageHandlers() {
@@ -536,8 +803,8 @@
             showStatus('saving', t('saving'));
         }
 
-        apiFetch('/drafts/' + wizard.draftId, {
-            method: 'PATCH',
+        apiFetch('/drafts/' + wizard.draftId + '?op=patch', {
+            method: 'POST',
             body: { description: wizard.editedJson.description, editedJson: wizard.editedJson }
         })
         .then(function() {

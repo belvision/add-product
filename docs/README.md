@@ -7,8 +7,10 @@ All project documentation lives here.
 | Path | Description |
 |------|-------------|
 | **docs/backend/** | Backend: API, storage, security, deployment, UX |
-| **docs/env/** | Environment variables: setup and `env/.env.example` |
 | **docs/migrations/** | Database migrations: CLI runner and manual apply |
+| [docs/ENV.md](ENV.md) | Переменные окружения: главный .env, шаблон, порядок поиска |
+| [docs/DB.md](DB.md) | База данных: как поднять с нуля, миграции, legacy |
+| [docs/STRUCTURE.md](STRUCTURE.md) | Структура фронта: marketplaces, shared, ассеты |
 
 ## Database schema
 

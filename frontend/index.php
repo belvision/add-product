@@ -1,30 +1,51 @@
 <?php
 
-$uri = isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '/';
-$uri = $uri ?: '/';
-$uri = rtrim($uri, '/') ?: '/';
-
-// Base path when app runs in subdirectory (e.g. /myapp). Used for strict prefix routing.
+// 1) Base path: SCRIPT_NAME e.g. /index.php -> base '', /myapp/index.php -> base '/myapp'.
 $base = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/');
-if (substr($base, -7) === '/public') {
-    $base = substr($base, 0, -7);
+if ($base === '/' || $base === '') {
+    $base = '';
 }
-$path = $uri;
-if ($base !== '' && $base !== '/') {
-    if ($uri === $base) {
+
+// 2) Path relative to base: split REQUEST_URI into path and query, then strip base prefix.
+$requestUri = $_SERVER['REQUEST_URI'] ?? '';
+$pathOnly = parse_url($requestUri, PHP_URL_PATH);
+$pathOnly = ($pathOnly !== null && $pathOnly !== '') ? $pathOnly : '/';
+$pathOnly = rtrim($pathOnly, '/') ?: '/';
+$queryString = parse_url($requestUri, PHP_URL_QUERY);
+$queryString = ($queryString !== null && $queryString !== '') ? $queryString : '';
+
+$path = $pathOnly;
+if ($base !== '') {
+    if ($pathOnly === $base) {
         $path = '/';
-    } elseif (strpos($uri, $base . '/') === 0) {
-        $path = substr($uri, strlen($base));
+    } elseif (strpos($pathOnly, $base . '/') === 0) {
+        $path = substr($pathOnly, strlen($base));
+    }
+}
+if ($path === '') {
+    $path = '/';
+}
+
+
+
+// Support legacy URLs that were generated with /frontend prefix (e.g. /frontend/register, /frontend/auth/*, /frontend/api/*).
+// When the app is deployed at domain root, these should behave the same as without the prefix.
+if ($path === '/frontend' || strpos($path, '/frontend/') === 0) {
+    $path = substr($path, 8);
+    if ($path === '') {
+        $path = '/';
     }
 }
 
-// Proxy /api and /auth only by strict prefix (avoid HTML instead of JSON on wrong paths).
+// Proxy only by prefix: /api and /auth. Backend sees REQUEST_URI as relative path (e.g. /api/me) so it can strip /api itself; no HTML-for-JSON.
 $isApi  = ($path === '/api' || strpos($path, '/api/') === 0);
 $isAuth = ($path === '/auth' || strpos($path, '/auth/') === 0);
 if ($isApi || $isAuth) {
-    $query = isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY) : '';
-    $_SERVER['REQUEST_URI'] = $path . ($query !== null && $query !== '' ? '?' . $query : '');
+    $forwardUri = $path . ($queryString !== '' ? '?' . $queryString : '');
+    $savedRequestUri = $_SERVER['REQUEST_URI'];
+    $_SERVER['REQUEST_URI'] = $forwardUri;
     require __DIR__ . '/../backend/api/index.php';
+    $_SERVER['REQUEST_URI'] = $savedRequestUri;
     return;
 }
 

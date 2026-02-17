@@ -59,6 +59,7 @@ class Auth
         self::initSession();
         Config::loadEnv();
         $pdo = Db::get();
+
         $email = trim(strtolower($email));
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return ['ok' => false, 'error' => 'INVALID_EMAIL'];
@@ -66,6 +67,7 @@ class Auth
         if (strlen($password) < 8) {
             return ['ok' => false, 'error' => 'WEAK_PASSWORD'];
         }
+
         $hash = password_hash($password, PASSWORD_DEFAULT);
         try {
             $stmt = $pdo->prepare('INSERT INTO users (email, password_hash) VALUES (?, ?)');
@@ -76,14 +78,20 @@ class Auth
             }
             throw $e;
         }
+
         $userId = (int) $pdo->lastInsertId();
+
         $token = bin2hex(random_bytes(32));
         $tokenHash = hash('sha256', $token);
         $expires = date('Y-m-d H:i:s', time() + 86400);
         $stmt = $pdo->prepare('INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)');
         $stmt->execute([$userId, $tokenHash, $expires]);
+
+        // Важно: отправка письма не должна ломать регистрацию.
         self::sendVerificationEmail($email, $token);
+
         $_SESSION['user_id'] = $userId;
+
         return ['ok' => true, 'user_id' => $userId, 'email_verified' => false];
     }
 
@@ -91,17 +99,22 @@ class Auth
     {
         self::initSession();
         $pdo = Db::get();
+
         $email = trim(strtolower($email));
         $stmt = $pdo->prepare('SELECT id, password_hash FROM users WHERE email = ?');
         $stmt->execute([$email]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
         if (!$row || !password_verify($password, $row['password_hash'])) {
             return ['ok' => false, 'error' => 'INVALID_CREDENTIALS'];
         }
+
         $_SESSION['user_id'] = (int) $row['id'];
+
         $stmt = $pdo->prepare('SELECT email_verified_at FROM users WHERE id = ?');
         $stmt->execute([$row['id']]);
         $u = $stmt->fetch(PDO::FETCH_ASSOC);
+
         return ['ok' => true, 'user_id' => (int) $row['id'], 'email_verified' => $u['email_verified_at'] !== null];
     }
 
@@ -124,16 +137,21 @@ class Auth
         }
         $tokenHash = hash('sha256', $token);
         $pdo = Db::get();
+
         $stmt = $pdo->prepare('SELECT user_id, expires_at FROM email_verification_tokens WHERE token_hash = ?');
         $stmt->execute([$tokenHash]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
         if (!$row || strtotime($row['expires_at']) < time()) {
             return ['ok' => false, 'error' => 'INVALID_OR_EXPIRED'];
         }
+
         $pdo->prepare('UPDATE users SET email_verified_at = NOW() WHERE id = ?')->execute([$row['user_id']]);
         $pdo->prepare('DELETE FROM email_verification_tokens WHERE token_hash = ?')->execute([$tokenHash]);
+
         self::initSession();
         $_SESSION['user_id'] = (int) $row['user_id'];
+
         return ['ok' => true];
     }
 
@@ -143,40 +161,59 @@ class Auth
         if ($userId === null) {
             return ['ok' => false, 'error' => 'UNAUTHORIZED'];
         }
+
         $pdo = Db::get();
         $stmt = $pdo->prepare('SELECT email, email_verified_at FROM users WHERE id = ?');
         $stmt->execute([$userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
         if (!$row) {
             return ['ok' => false, 'error' => 'NOT_FOUND'];
         }
         if ($row['email_verified_at'] !== null) {
             return ['ok' => true, 'already_verified' => true];
         }
+
         $token = bin2hex(random_bytes(32));
         $tokenHash = hash('sha256', $token);
         $expires = date('Y-m-d H:i:s', time() + 86400);
+
         $pdo->prepare('DELETE FROM email_verification_tokens WHERE user_id = ?')->execute([$userId]);
         $stmt = $pdo->prepare('INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)');
         $stmt->execute([$userId, $tokenHash, $expires]);
-        self::sendVerificationEmail($row['email'], $token);
-        return ['ok' => true];
+
+        $sent = self::sendVerificationEmail($row['email'], $token);
+        if (!$sent) {
+            return ['ok' => false, 'error' => 'EMAIL_SEND_FAILED'];
+        }
+
+        return ['ok' => true, 'sent' => true];
     }
 
-    private static function sendVerificationEmail($to, $token)
+    private static function sendVerificationEmail($to, $token): bool
     {
         $base = self::baseUrl();
         $link = $base . '/verify-email?token=' . urlencode($token);
+
         $subject = 'Verify your email';
         $body = "Click to verify: " . $link;
-        $from = Config::get('SMTP_FROM', 'noreply@localhost');
-        $host = Config::get('SMTP_HOST');
-        if ($host) {
-            self::smtpSend($to, $subject, $body, $from, $host);
-        } else {
-            $headers = "From: $from\r\nContent-Type: text/plain; charset=UTF-8";
-            mail($to, $subject, $body, $headers);
+
+        $fromHeader = Config::get('SMTP_FROM', 'noreply@localhost');
+        $smtpHost = Config::get('SMTP_HOST');
+
+        // For SMTP envelope (MAIL FROM) нужен чистый email
+        $fromEmail = self::extractEmail($fromHeader);
+        if ($fromEmail === null) {
+            $fromEmail = $fromHeader;
         }
+
+        if ($smtpHost) {
+            return self::smtpSend($to, $subject, $body, $fromHeader, $fromEmail, $smtpHost);
+        }
+
+        // Важно: на сервере без MTA mail() часто не работает. Это ветка "на всякий случай".
+        $headers = "From: $fromHeader\r\nContent-Type: text/plain; charset=UTF-8";
+        return @mail($to, $subject, $body, $headers) ? true : false;
     }
 
     private static function baseUrl()
@@ -185,76 +222,205 @@ class Auth
         if ($base !== null && $base !== '') {
             return rtrim($base, '/');
         }
+
         $req = $_SERVER['REQUEST_URI'] ?? '/';
         $script = $_SERVER['SCRIPT_NAME'] ?? '';
         $base = '';
+
         if ($script !== '' && strpos($req, $script) === 0) {
             $base = rtrim(dirname($script), '/');
             if (substr($base, -7) === '/public') {
                 $base = substr($base, 0, -7);
             }
         }
+
         $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
         $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+
         return $proto . '://' . $host . ($base ?: '');
     }
 
-    private static function smtpSend($to, $subject, $body, $from, $host)
+    private static function extractEmail($from)
+    {
+        // "Name <email@domain>"
+        if (preg_match('/<([^>]+)>/', (string) $from, $m)) {
+            return trim($m[1]);
+        }
+        // "email@domain"
+        if (filter_var((string) $from, FILTER_VALIDATE_EMAIL)) {
+            return (string) $from;
+        }
+        return null;
+    }
+
+    /**
+     * SMTP send with basic error handling.
+     * Supports:
+     * - 587 STARTTLS
+     * - 465 SMTPS (ssl://)
+     *
+     * Returns true/false. Does not throw.
+     */
+    private static function smtpSend($to, $subject, $body, $fromHeader, $fromEmail, $host): bool
     {
         $port = (int) Config::get('SMTP_PORT', 587);
-        $user = Config::get('SMTP_USER', '');
-        $pass = Config::get('SMTP_PASS', '');
+        $user = (string) Config::get('SMTP_USER', '');
+        $pass = (string) Config::get('SMTP_PASS', '');
+
         $errno = 0;
         $errstr = '';
-        $sock = @stream_socket_client("tcp://$host:$port", $errno, $errstr, 10);
-        if (!$sock) {
-            return;
+
+        $transport = 'tcp';
+        if ($port === 465) {
+            $transport = 'ssl';
         }
-        stream_set_timeout($sock, 5);
-        $read = function () use ($sock) {
-            $line = fgets($sock);
-            return $line !== false ? trim($line) : '';
+
+        $sock = @stream_socket_client("$transport://$host:$port", $errno, $errstr, 15);
+        if (!$sock) {
+            error_log("[SMTP] connect failed: $errno $errstr");
+            return false;
+        }
+
+        stream_set_timeout($sock, 10);
+
+        $readResponse = function () use ($sock) {
+            $lines = [];
+            while (!feof($sock)) {
+                $line = fgets($sock);
+                if ($line === false) {
+                    break;
+                }
+                $line = rtrim($line, "\r\n");
+                $lines[] = $line;
+
+                // Multi-line SMTP: "250-" continues, "250 " ends
+                if (preg_match('/^\d{3}\s/', $line)) {
+                    break;
+                }
+            }
+            return $lines;
         };
+
         $write = function ($line) use ($sock) {
             fwrite($sock, $line . "\r\n");
         };
-        $read();
-        $write("EHLO localhost");
-        while ($line = $read()) {
-            if (preg_match('/^\d{3}\s/', $line) && substr($line, 3, 1) === ' ') break;
+
+        $expectCode = function ($lines, $wantCode) {
+            if (!$lines || !isset($lines[0])) {
+                return false;
+            }
+            return strpos($lines[0], (string) $wantCode) === 0;
+        };
+
+        // Banner
+        $banner = $readResponse();
+        if (!$expectCode($banner, 220)) {
+            error_log('[SMTP] bad banner: ' . implode(' | ', $banner));
+            fclose($sock);
+            return false;
         }
+
+        // EHLO
+        $write('EHLO localhost');
+        $ehlo = $readResponse();
+        if (!$expectCode($ehlo, 250)) {
+            error_log('[SMTP] EHLO failed: ' . implode(' | ', $ehlo));
+            fclose($sock);
+            return false;
+        }
+
+        // STARTTLS for 587
         if ($port === 587) {
             $write('STARTTLS');
-            $read();
-            stream_socket_enable_crypto($sock, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-            $write("EHLO localhost");
-            while ($line = $read()) {
-                if (preg_match('/^\d{3}\s/', $line) && substr($line, 3, 1) === ' ') break;
+            $resp = $readResponse();
+            if (!$expectCode($resp, 220)) {
+                error_log('[SMTP] STARTTLS failed: ' . implode(' | ', $resp));
+                fclose($sock);
+                return false;
+            }
+            if (!stream_socket_enable_crypto($sock, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+                error_log('[SMTP] TLS enable failed');
+                fclose($sock);
+                return false;
+            }
+            $write('EHLO localhost');
+            $ehlo2 = $readResponse();
+            if (!$expectCode($ehlo2, 250)) {
+                error_log('[SMTP] EHLO after STARTTLS failed: ' . implode(' | ', $ehlo2));
+                fclose($sock);
+                return false;
             }
         }
+
+        // AUTH LOGIN
         if ($user !== '') {
             $write('AUTH LOGIN');
-            $read();
+            $r1 = $readResponse();
+            if (!$expectCode($r1, 334)) {
+                error_log('[SMTP] AUTH LOGIN rejected: ' . implode(' | ', $r1));
+                fclose($sock);
+                return false;
+            }
+
             $write(base64_encode($user));
-            $read();
+            $r2 = $readResponse();
+            if (!$expectCode($r2, 334)) {
+                error_log('[SMTP] AUTH user rejected: ' . implode(' | ', $r2));
+                fclose($sock);
+                return false;
+            }
+
             $write(base64_encode($pass));
-            $read();
+            $r3 = $readResponse();
+            if (!$expectCode($r3, 235)) {
+                error_log('[SMTP] AUTH pass rejected: ' . implode(' | ', $r3));
+                fclose($sock);
+                return false;
+            }
         }
-        $write("MAIL FROM:<$from>");
-        $read();
+
+        // MAIL FROM / RCPT TO / DATA
+        $write("MAIL FROM:<$fromEmail>");
+        $rFrom = $readResponse();
+        if (!$expectCode($rFrom, 250)) {
+            error_log('[SMTP] MAIL FROM failed: ' . implode(' | ', $rFrom));
+            fclose($sock);
+            return false;
+        }
+
         $write("RCPT TO:<$to>");
-        $read();
+        $rTo = $readResponse();
+        if (!$expectCode($rTo, 250) && !$expectCode($rTo, 251)) {
+            error_log('[SMTP] RCPT TO failed: ' . implode(' | ', $rTo));
+            fclose($sock);
+            return false;
+        }
+
         $write('DATA');
-        $read();
+        $rData = $readResponse();
+        if (!$expectCode($rData, 354)) {
+            error_log('[SMTP] DATA failed: ' . implode(' | ', $rData));
+            fclose($sock);
+            return false;
+        }
+
+        // Headers + body
         $write("Subject: $subject");
-        $write("From: $from");
+        $write("From: $fromHeader");
         $write("To: $to");
         $write("Content-Type: text/plain; charset=UTF-8");
         $write('');
         $write($body);
         $write('.');
-        $read();
+        $rEnd = $readResponse();
+        if (!$expectCode($rEnd, 250)) {
+            error_log('[SMTP] end DATA failed: ' . implode(' | ', $rEnd));
+            fclose($sock);
+            return false;
+        }
+
         $write('QUIT');
-        fclose($sock);
+        @fclose($sock);
+        return true;
     }
 }

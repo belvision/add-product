@@ -108,6 +108,21 @@ class ImageRoutes
             return true;
         }
 
+        // GET /drafts/{draftId}/images/{imageId}[.jpg] — serve image file (public, for eMall API fetch)
+        if ($method === 'GET' && preg_match('#^/drafts/([^/]+)/images/([^/]+)$#', $path, $m)) {
+            $draftId = $m[1];
+            $imageId = preg_replace('/\.(jpg|jpeg|png|webp)$/i', '', $m[2]);
+            $filePath = DraftRepository::getImageFilePath($draftId, $imageId);
+            if (!$filePath || !is_file($filePath)) {
+                header('HTTP/1.1 404 Not Found');
+                exit;
+            }
+            header('Content-Type: image/jpeg');
+            header('Cache-Control: public, max-age=86400');
+            readfile($filePath);
+            return true;
+        }
+
         return false;
     }
 }

@@ -1,4 +1,8 @@
 /**
+ * SOURCE: frontend/public/js/shared/api.js — EDIT THERE.
+ * This file is a legacy copy for URL compatibility (/public/js/api.js).
+ */
+/**
  * Safe API fetch: always reads response as text first, checks Content-Type,
  * then parses JSON. Prevents "JSON.parse: unexpected character" when server
  * returns HTML/redirect/error body.
@@ -13,13 +17,17 @@
     }
 
     /**
-     * Build URL to PHP API entrypoint using `r` query parameter.
-     * Normalizes route to start with "/" and URL-encodes it to avoid nginx/WAF
-     * rejecting raw slashes in query args (406 Not Acceptable).
+     * Build URL to API entrypoint using clean, prefix-based path:
+     *     /<base>/api/<route>
+     *
+     * Example (base="/frontend", route="/me"):
+     *     "/frontend/api/me"
+     *
+     * nginx is responsible for mapping /frontend/api/* to the real PHP entrypoint.
      *
      * @param {string} route - logical route, e.g. "/me" or "me/ozon-credentials"
      * @param {string} [baseOverride] - optional base path like "/frontend"
-     * @returns {string} full URL like "/frontend/api/index.php?r=%2Fme"
+     * @returns {string} full URL like "/frontend/api/me"
      */
     function buildApiUrlR(route, baseOverride) {
         var r = route || "";
@@ -27,7 +35,7 @@
         var base = (typeof baseOverride === 'string' && baseOverride.length)
             ? baseOverride
             : getBase();
-        return (base || "") + "/api/index.php?r=" + encodeURIComponent(r);
+        return (base || "") + "/api" + r;
     }
     window.buildApiUrlR = buildApiUrlR;
 
@@ -63,6 +71,15 @@
         var headers = options.headers || {};
         if (!headers['Accept']) {
             headers['Accept'] = 'application/json';
+        }
+
+        // Forward current UI locale to backend without relying on query args,
+        // which might be rewritten by nginx.
+        var lang = (typeof window.__OZON_LANG__ === 'string' && window.__OZON_LANG__)
+            ? window.__OZON_LANG__
+            : null;
+        if (lang && !headers['X-Lang']) {
+            headers['X-Lang'] = lang;
         }
         var body = options.body;
         if (body !== undefined && typeof body !== 'string' && !(body instanceof FormData)) {

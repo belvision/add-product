@@ -1,6 +1,6 @@
 # Environment template
 
-This folder contains a safe example of environment variables (no real secrets).
+This folder contains the **canonical** example of environment variables (no real secrets). For where the app looks for `.env` and the recommended single file, see [docs/ENV.md](../ENV.md).
 
 ## Setup
 
