@@ -1,0 +1,14 @@
+Options -Indexes
+RewriteEngine On
+
+# Если файл/папка существует — отдаём как есть
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# API: /api/* -> /api/index.php
+RewriteRule ^api(?:/(.*))?$ api/index.php [L,QSA]
+
+# Всё остальное -> /frontend/index.php
+RewriteRule ^ frontend/index.php [L,QSA]
+

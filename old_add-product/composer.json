@@ -1,0 +1,19 @@
+{
+  "name": "local/add-product",
+  "type": "project",
+  "autoload": {
+    "psr-4": {
+      "App\\": "backend/src/",
+      "App\\Api\\": "backend/api/",
+      "App\\Scripts\\": "backend/scripts/"
+    },
+    "classmap": [
+      "backend/src/",
+      "backend/api/",
+      "backend/scripts/"
+    ]
+  },
+  "config": {
+    "optimize-autoloader": true
+  }
+}
