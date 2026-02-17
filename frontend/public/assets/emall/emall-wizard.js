@@ -756,6 +756,15 @@ function renderStep1ContentLegacy() {
     }
 
     function renderStep2TextContent() {
+        var ns = window.EmallWizard;
+        var fn = (ns && typeof ns.getStepRenderer === 'function') ? ns.getStepRenderer(2) : null;
+        if (typeof fn === 'function') {
+            try { return fn(); } catch (e) { /* fallback below */ }
+        }
+        return renderStep2TextContentLegacy();
+    }
+
+    function renderStep2TextContentLegacy() {
         var gt = wizard.generatedText || { title: '', description: '', benefits: '', usage: '' };
         var combined = buildCombinedDescription(gt);
         var html = '<div class="emall-text-step">';
@@ -831,6 +840,15 @@ function renderStep1ContentLegacy() {
     }
 
     function renderStep3Content() {
+        var ns = window.EmallWizard;
+        var fn = (ns && typeof ns.getStepRenderer === 'function') ? ns.getStepRenderer(3) : null;
+        if (typeof fn === 'function') {
+            try { return fn(); } catch (e) { /* fallback below */ }
+        }
+        return renderStep3ContentLegacy();
+    }
+
+    function renderStep3ContentLegacy() {
         var gt = wizard.generatedText || { title: '', description: '', benefits: '', usage: '' };
         var combined = buildCombinedDescription(gt);
         var pr = wizard.priceResult;
@@ -896,6 +914,15 @@ function renderStep1ContentLegacy() {
     }
 
     function renderStep4Content() {
+        var ns = window.EmallWizard;
+        var fn = (ns && typeof ns.getStepRenderer === 'function') ? ns.getStepRenderer(4) : null;
+        if (typeof fn === 'function') {
+            try { return fn(); } catch (e) { /* fallback below */ }
+        }
+        return renderStep4ContentLegacy();
+    }
+
+    function renderStep4ContentLegacy() {
         var dim = wizard.dimensionsResult;
         var pr = wizard.priceResult;
         var pred = wizard.brandCountryPredicted;
@@ -1023,6 +1050,15 @@ function renderStep1ContentLegacy() {
     }
 
     function renderStep5Content() {
+        var ns = window.EmallWizard;
+        var fn = (ns && typeof ns.getStepRenderer === 'function') ? ns.getStepRenderer(5) : null;
+        if (typeof fn === 'function') {
+            try { return fn(); } catch (e) { /* fallback below */ }
+        }
+        return renderStep5ContentLegacy();
+    }
+
+    function renderStep5ContentLegacy() {
         var props = wizard.categoryPropertiesList || [];
         var filled = wizard.categoryPropertiesFilled || [];
         var loading = wizard.categoryPropertiesLoading || wizard.categoryPropertiesFilling;
@@ -1127,6 +1163,15 @@ function renderStep1ContentLegacy() {
     }
 
     function renderStep6Content() {
+        var ns = window.EmallWizard;
+        var fn = (ns && typeof ns.getStepRenderer === 'function') ? ns.getStepRenderer(6) : null;
+        if (typeof fn === 'function') {
+            try { return fn(); } catch (e) { /* fallback below */ }
+        }
+        return renderStep6ContentLegacy();
+    }
+
+    function renderStep6ContentLegacy() {
         var payload = wizard.payloadData;
         var loading = wizard.payloadLoading;
         var stock = (wizard.editedJson && wizard.editedJson.stock != null) ? parseInt(wizard.editedJson.stock, 10) : 30;
@@ -1184,6 +1229,15 @@ function renderStep1ContentLegacy() {
     }
 
     function renderStep7Content() {
+        var ns = window.EmallWizard;
+        var fn = (ns && typeof ns.getStepRenderer === 'function') ? ns.getStepRenderer(7) : null;
+        if (typeof fn === 'function') {
+            try { return fn(); } catch (e) { /* fallback below */ }
+        }
+        return renderStep7ContentLegacy();
+    }
+
+    function renderStep7ContentLegacy() {
         var result = wizard.submitProductResult;
         var loading = wizard.submitProductLoading;
         var payload = wizard.payloadData;

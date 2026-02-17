@@ -17,6 +17,12 @@ $pairs = [
     $frontendPublic . '/assets/emall/emall-wizard.js' => $rootPublic . '/assets/emall/emall-wizard.js',
     $frontendPublic . '/assets/emall/emall-wizard.css' => $rootPublic . '/assets/emall/emall-wizard.css',
     $frontendPublic . '/assets/emall/steps/step1.js' => $rootPublic . '/assets/emall/steps/step1.js',
+    $frontendPublic . '/assets/emall/steps/step7.js' => $rootPublic . '/assets/emall/steps/step7.js',
+    $frontendPublic . '/assets/emall/steps/step6.js' => $rootPublic . '/assets/emall/steps/step6.js',
+    $frontendPublic . '/assets/emall/steps/step5.js' => $rootPublic . '/assets/emall/steps/step5.js',
+    $frontendPublic . '/assets/emall/steps/step4.js' => $rootPublic . '/assets/emall/steps/step4.js',
+    $frontendPublic . '/assets/emall/steps/step3.js' => $rootPublic . '/assets/emall/steps/step3.js',
+    $frontendPublic . '/assets/emall/steps/step2.js' => $rootPublic . '/assets/emall/steps/step2.js',
     // Shared JS
     $frontendPublic . '/js/api.js' => $rootPublic . '/js/api.js',
 ];
