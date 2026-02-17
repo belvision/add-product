@@ -16,6 +16,7 @@ $pairs = [
     // eMall
     $frontendPublic . '/assets/emall/emall-wizard.js' => $rootPublic . '/assets/emall/emall-wizard.js',
     $frontendPublic . '/assets/emall/emall-wizard.css' => $rootPublic . '/assets/emall/emall-wizard.css',
+    $frontendPublic . '/assets/emall/steps/step1.js' => $rootPublic . '/assets/emall/steps/step1.js',
     // Shared JS
     $frontendPublic . '/js/api.js' => $rootPublic . '/js/api.js',
 ];

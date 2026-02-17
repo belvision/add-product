@@ -165,6 +165,15 @@ window.EmallWizard = window.EmallWizard || {};
             { key: 'category', labelKey: 'step2Label' }
         ]
     };
+// === Expose limited context for step modules (split wizard into files) ===
+window.EmallWizard = window.EmallWizard || {};
+window.EmallWizard.ctx = window.EmallWizard.ctx || {};
+window.EmallWizard.ctx.locale = locale;
+window.EmallWizard.ctx.t = t;
+window.EmallWizard.ctx.escapeHtml = escapeHtml;
+window.EmallWizard.ctx.getWizard = function() { return wizard; };
+
+
 
     function buildStepState() {
         const state = {};
@@ -468,6 +477,15 @@ window.EmallWizard = window.EmallWizard || {};
     }
 
     function renderStep1Content() {
+        var ns = window.EmallWizard;
+        var fn = (ns && typeof ns.getStepRenderer === 'function') ? ns.getStepRenderer(1) : null;
+        if (typeof fn === 'function') {
+            try { return fn(); } catch (e) { /* fallback below */ }
+        }
+        return renderStep1ContentLegacy();
+    }
+
+function renderStep1ContentLegacy() {
         var desc = (wizard.editedJson && wizard.editedJson.description) || '';
         var apiKey = (wizard.editedJson && wizard.editedJson.emall_api_key) || '';
         var html = '';

@@ -17,3 +17,4 @@ $base = isset($base) ? $base : '';
 </script>
 <script src="<?php echo htmlspecialchars($base); ?>/public/js/api.js"></script>
 <script src="<?php echo htmlspecialchars($base); ?>/public/assets/emall/emall-wizard.js" defer></script>
+<script src="<?php echo htmlspecialchars($base); ?>/public/assets/emall/steps/step1.js" defer></script>
